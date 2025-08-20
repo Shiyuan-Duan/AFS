@@ -1,0 +1,21 @@
+task:
+  title: "Benchmark sklearn models on sample datasets"
+  goal: |
+    Benchmark 多个 scikit-learn 分类器在内置数据集上的表现，并生成可复现实验报告。
+    数据集：iris、wine、breast_cancer（多分类与二分类）。
+    模型：logistic_regression、svc_linear、svc_rbf、random_forest、gradient_boosting、knn。
+    评估：Stratified 5-fold CV，random_state=42；对需标准化的模型用 Pipeline(StandardScaler)。
+    指标：accuracy、f1_macro；二分类额外记录 roc_auc（如适用）。
+    产出：
+      - outputs/benchmark.csv（每模型/每数据集的均值±方差）
+      - outputs/folds/ 下保存每折分数
+      - outputs/figures/acc_bar.png（每数据集 top-N 模型柱状图）
+  deliverables:
+    - "Markdown + HTML 报告（含表格和图）"
+    - "CSV（总体与逐折分数）、可复现实验代码与所有产物"
+  constraints:
+    - "所有随机数固定 seed=42，结果可复现"
+    - "SVC/KNN/LogReg 通过 StandardScaler 构建 Pipeline"
+    - "所有脚本写入 runs/<...>/code/ 并可独立复跑"
+    - "图表写入 runs/<...>/outputs/figures/"
+    - "报告需包含方法、结果、误差分析与下一步计划"

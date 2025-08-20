@@ -1,0 +1,54 @@
+task:
+  title: "对 data/training2017 的深入分析与可解释的确定性‘规则链’分类器构建（迭代至 ≥90% 准确率）"
+  goal: |
+    给定本地数据集 data/training2017，完成深入 EDA，并据此设计与实现一个“可解释、确定性”的规则链（rule chain）分类器：
+    - 规则示例（非限定）：
+        • 若 feature_A > 阈值1 且 feature_B 在出现事件E后的 T 秒内发生某阈值变化，则判为类别 X；
+        • 若 feature_C 的峰值与宽度组合满足条件，则判为类别 Y；
+      规则需可解释（对应到具体特征、阈值与时序条件），可被人类阅读与复核。
+    - 数据在：/Users/shiyuanduan/Documents/ai-for-science-agents/data/training2017
+    工作流程（可迭代循环直至达标）：
+      - 自动探测/记录数据格式假设，完成 EDA：规模、字段、缺失、类型、标签分布、数据质量；
+      - 设计特征：含基础统计、时域/频域/形态学、以及“事件相对时间窗”的时序特征；
+      - 归纳确定性规则链（决策列表/if-then-else），或以可解释模型（如浅层决策树/线性模型）辅助挖掘阈值并固化为规则；
+      - 评估（Stratified 5-fold 或固定 holdout，random_state=42），以准确率为主，必要时报告精确率/召回率/F1；
+      - 基于误差分析改进特征与规则，直至验证集准确率 ≥ 90%；
+      - 输出最终可复现的分类器与详细规则解释。
+
+  inputs:
+    dataset_root: "/Users/shiyuanduan/Documents/ai-for-science-agents/data/training2017"
+    notes: |
+      - 仅使用本地文件；如格式不明，请在代码中自动探测并在报告中清晰记录假设（文件命名/标签字段/采样率等）。
+      - 如数据较大，可实现分块/缓存式处理；确保脚本可在本地环境下运行。
+    description: |
+      数据集：PhysioNet/Computing in Cardiology Challenge 2017（单导联心电 AF 分类，v1.0.0）。
+      官方页面：https://physionet.org/content/challenge-2017/1.0.0/
+      形式：单导联 ECG，长度约 30 秒（可变），采样率约 300 Hz。
+      目录结构（dataset_root 下）：
+        - REFERENCE.csv：记录 ID 到标签的映射，标签含义：N（正常）、A（房颤 AF）、O（其他心律）、~（噪声）。
+        - AXXXXX.mat：MATLAB v4 文件，存放该记录的一维心电信号。
+        - AXXXXX.hea：WFDB 头文件，包含采样率、长度与元数据（读取信号时以 .hea 为准获取 fs/length）。
+      读取建议：使用 WFDB 或 scipy.io.loadmat 读取信号，并结合 .hea 提取采样频率等信息。
+
+  deliverables:
+    - "Markdown + HTML 报告（含：EDA、特征工程、规则链定义、规则可解释性说明、评估结果、误差分析、迭代记录与下一步计划）"
+    - "完整可复现代码：runs/<...>/code/ 下包含 数据加载、特征提取、规则学习/归纳、评估、以及分类接口脚本"
+    - "最终分类器：
+         • Python 接口 classify(sample_or_path) -> {label, score/置信、explanation: 触发了哪些规则及其阈值};
+         • 或 CLI：python code/classifier.py --input <path> 输出标签与解释（列出命中的规则链）"
+    - "规则产物（机器可读 + 人类可读）：
+         • runs/<...>/outputs/rules.json（结构化规则列表、阈值、条件、优先级/顺序）
+         • runs/<...>/outputs/rules.md（人类可读说明，示例与可视化)"
+    - "评估产物：
+         • runs/<...>/outputs/benchmark.csv（各轮/各折结果与均值±方差）
+         • runs/<...>/outputs/confusion_matrix.png、features_importance.png（如适用）
+         • runs/<...>/outputs/misclassified.csv（误分类样本与触发规则，便于误差分析)"
+
+  constraints:
+    - "确定性：固定随机数种子（random_state=42 等），避免非确定性算子；同一环境可复现实验结果"
+    - "可解释性与规则链优先：最终模型以‘规则链/决策列表’呈现；若借助可解释模型辅助阈值选取，需将参数固化为显式规则"
+    - "时序条件：鼓励使用‘事件相对时间窗’等时序逻辑（如事件 E 后 T 秒内满足某变化），并在规则中明确表达"
+    - "评估：推荐 Stratified 5-fold；如使用 holdout，请固定切分与随机种子并在报告中说明"
+    - "目标：验证集准确率 ≥ 90%；未达标则基于误差分析继续迭代，优先优化规则与特征"
+    - "仅本地执行；所有读写限定在 runs/<...>/（代码、数据副本/缓存、输出、报告）"
+    - "脚本可独立复跑；必要的运行说明写入 README 或报告附录"

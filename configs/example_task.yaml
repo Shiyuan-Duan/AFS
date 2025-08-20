@@ -1,0 +1,18 @@
+# An example science workflow task. Edit freely.
+task:
+  title: "Inferring a deterministic classifier from synthetic ECG segments"
+  goal: |
+    We want to explore a deterministic rule-based model for classifying
+    synthetic ECG beats into {N: normal, V: PVC} using simple features
+    (e.g., HR thresholds, peak amplitude, slope). Use a lightweight
+    simulation to generate toy data, extract features, and propose
+    interpretable rules. Validate with a held-out set.
+  inputs:
+    dataset_root: "data/raw"   # optional; Scientist may create or ignore
+  deliverables:
+    - "A concise markdown report with figures and tables"
+    - "All generated code and artifacts saved to the run folder"
+  constraints:
+    - "Prefer deterministic rules over neural networks"
+    - "Ensure code is reproducible"
+    - "Use only local execution"

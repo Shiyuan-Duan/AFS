@@ -1,0 +1,41 @@
+# {{ title }}
+
+**Abstract.** {{ abstract }}
+
+---
+
+{% for s in sections %}
+## {{ s.title }}
+
+{{ s.text }}
+
+{% if s.code_path %}
+**Code:** `{{ s.code_path }}`
+{% endif %}
+
+{% if s.data_paths %}
+**Data:** {% for p in s.data_paths %}`{{ p }}` {% endfor %}
+{% endif %}
+
+{% if s.figure_paths %}
+**Figures:** {% for p in s.figure_paths %}`{{ p }}` {% endfor %}
+{% endif %}
+
+---
+{% endfor %}
+
+{% if figures and figures|length > 0 %}
+## Figures
+
+{% for f in figures %}
+- **{{ f.caption }}** — `{{ f.path }}`
+{% endfor %}
+
+---
+{% endif %}
+
+## Conclusions
+
+{% for c in conclusions %}
+- {{ c }}
+{% endfor %}

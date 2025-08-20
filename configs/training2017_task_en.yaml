@@ -1,0 +1,57 @@
+task:
+  title: "In-depth analysis of /Users/shiyuanduan/Documents/ai-for-science-agents/data/training2017 and construction of an interpretable, deterministic rule-chain classifier (iterate to ≥90% accuracy)"
+  goal: |
+    Given the local dataset at /Users/shiyuanduan/Documents/ai-for-science-agents/data/training2017, conduct thorough exploratory data analysis (EDA),
+    then design and implement an interpretable, deterministic rule-chain (decision-list) classifier.
+
+    Rule examples (non-exhaustive):
+      • If feature_A > threshold1 AND feature_B changes by a certain amount within T seconds after event E, classify as class X.
+      • If the combination of peak value and width of feature_C satisfies specific conditions, classify as class Y.
+    Rules must be human-interpretable (explicit features, thresholds, temporal conditions) and auditable.
+
+    Workflow (iterate until target is met):
+      - Auto-detect and document dataset format assumptions; perform EDA: size, fields, dtypes, missingness, label distribution, data quality.
+      - Design features: include basic statistics, time/frequency/morphological features, and event-relative time-window features for temporal logic.
+      - Induce a deterministic rule chain (if–then–else/decision list), or use interpretable models (e.g., shallow decision tree/linear model)
+        to help discover thresholds and then harden them into explicit rules.
+      - Evaluation: Stratified 5-fold CV or a fixed holdout split (random_state=42). Primary metric: accuracy; also report precision/recall/F1 as needed.
+      - Iterate via error analysis to refine features and rules until validation accuracy ≥ 90%.
+      - Produce a fully reproducible classifier and a detailed explanation of the final rule chain.
+
+  inputs:
+    dataset_root: "/Users/shiyuanduan/Documents/ai-for-science-agents/data/training2017"
+    notes: |
+      - Use local files only. If the exact format is unknown, auto-detect in code and record assumptions in the report (file naming/label field/sampling rate, etc.).
+      - If the dataset is large, support chunking/caching; ensure scripts run locally.
+    description: |
+      Dataset: AF Classification from a Short Single Lead ECG Recording — PhysioNet/Computing in Cardiology Challenge 2017 (v1.0.0).
+      Source: https://physionet.org/content/challenge-2017/1.0.0/
+      Modality: single-lead ECG recordings (typically ~30s) with variable length, sampled at ~300 Hz.
+      File structure under dataset_root:
+        - REFERENCE.csv: mapping from record ID to label: N (Normal), A (AF), O (Other rhythm), ~ (Noisy).
+        - AXXXXX.mat: MATLAB v4 file with 1D ECG signal array for record AXXXXX.
+        - AXXXXX.hea: WFDB header with sampling frequency, length, and metadata for AXXXXX.
+      Note: Use WFDB or scipy.io.loadmat to read signals; always rely on .hea for fs/length.
+
+  deliverables:
+    - "Markdown + HTML report covering: EDA, feature engineering, rule-chain definition, interpretability of rules, evaluation results, error analysis, iteration history, and next steps."
+    - "Reproducible code under runs/<...>/code/ including: data loading, feature extraction, rule induction/learning, evaluation, and a classification interface."
+    - "Final classifier:
+         • Python API classify(sample_or_path) -> {label, confidence/score, explanation: which rules fired and their thresholds/time windows};
+         • or CLI: python code/classifier.py --input <path> printing label and explanation (list of triggered rules)."
+    - "Rule artifacts (machine- and human-readable):
+         • runs/<...>/outputs/rules.json (structured rules, thresholds, conditions, priority/order)
+         • runs/<...>/outputs/rules.md (human-readable description with examples/visualizations)."
+    - "Evaluation artifacts:
+         • runs/<...>/outputs/benchmark.csv (per-iteration/per-fold metrics and mean±std)
+         • runs/<...>/outputs/confusion_matrix.png, features_importance.png (if applicable)
+         • runs/<...>/outputs/misclassified.csv (misclassified samples with triggered rules for error analysis)."
+
+  constraints:
+    - "Determinism: fix random seeds (e.g., random_state=42); avoid non-deterministic ops; results must be reproducible in the same environment."
+    - "Interpretability & rule chain first: the final model is a rule chain/decision list; if using interpretable models to find thresholds, harden them into explicit rules."
+    - "Temporal conditions: encourage event-relative time-window logic (e.g., within T seconds after event E) and express it clearly in rules."
+    - "Evaluation: prefer Stratified 5-fold; if using a holdout split, fix the split and seed and document it in the report."
+    - "Target: validation accuracy ≥ 90%; if unmet, continue iterating, prioritizing improvements to rules and features."
+    - "Local-only execution; all reads/writes confined to runs/<...>/ (code, data copies/caches if needed, outputs, reports)."
+    - "Scripts must be re-runnable; include necessary run instructions in README or report appendix."
