@@ -1,77 +1,121 @@
-from __future__ import annotations
+import argparse
 import os
-import json
-import typer
+from typing import Optional
+from pathlib import Path
+from openai import OpenAI
+from dotenv import load_dotenv
 from rich.console import Console
-from rich.panel import Panel
-from rich.markdown import Markdown
-from .agent_loop import stream_dialogue
+try:
+    from .run_utils import make_run_folder, copy_data_to_run, append_jsonl, load_checkpoint
+except Exception:
+    from run_utils import make_run_folder, copy_data_to_run, append_jsonl, load_checkpoint
+try:
+    from .orchestrator import Orchestrator
+    from .agent_loop import run_conversation_loop
+except Exception:
+    from orchestrator import Orchestrator
+    from agent_loop import run_conversation_loop
 
-app = typer.Typer(add_completion=False)
-console = Console()
 
-@app.command()
-def main(
-    task: str = typer.Option(..., help="Path to task YAML"),
-    max_steps: int = typer.Option(12, help="Maximum dialogue steps"),
-    run_name: str | None = typer.Option(None, help="Suffix for run folder name"),
-    dry_run: bool = typer.Option(False, help="Do not execute tools; just simulate LLM calls"),
-    execute_actions: bool = typer.Option(True, help="Allow executing Assistant action plans (writes to runs/)"),
-    allow_installs: bool = typer.Option(False, help="Allow Assistant to install Python packages via pip inside the run (sets ALLOW_PIP_INSTALLS=1)"),
-    data_root: str = typer.Option("/Users/shiyuanduan/Documents/ai-for-science-agents/data", help="Path to your local data folder to copy into each run (when executing)"),
-    until_done: bool = typer.Option(False, help="Keep going until Scientist replies DONE (safety cap applies)"),
-):
-    console.rule("Scientist ↔ Assistant")
-    if allow_installs:
-        os.environ["ALLOW_PIP_INSTALLS"] = "1"
-    payload_json: str | None = None
+load_dotenv()
 
-    for evt in stream_dialogue(task_yaml=task, run_name=run_name, max_steps=max_steps, dry_run=dry_run, execute_actions=execute_actions, until_done=until_done, data_root=data_root):
-        if evt.get("type") == "run_root":
-            console.print(Panel(f"Artifacts will be written under: {evt['path']}", title="Run Folder", border_style="blue"))
-            continue
-        if evt.get("type") == "data_copied":
-            details = evt.get("details", {})
-            console.print(Panel(Markdown("Copied data into run folder.\n\n" + "```json\n" + json.dumps(details, indent=2, ensure_ascii=False) + "\n```"), title="Data Ingest", border_style="blue"))
-            continue
-        if evt.get("type") == "data_copy_error":
-            console.print(Panel(Markdown(f"[red]Failed to copy data[/red]: {evt.get('error','unknown')}"), title="Data Ingest Error", border_style="red"))
-            continue
-        if evt.get("type") == "message":
-            role = evt["role"]
-            step = evt["step"]
-            text = evt.get("content", "")
-            title = f"{role.capitalize()} · step {step}"
-            style = "cyan" if role == "scientist" else "magenta"
-            console.print(Panel(Markdown(text), title=title, border_style=style))
-        elif evt.get("type") == "warning":
-            console.print(Panel(evt.get("message", ""), title="Warning", border_style="red"))
-        elif evt.get("type") == "plan":
-            step = evt.get("step")
-            plan = evt.get("plan", [])
-            finalize = evt.get("finalize", {})
-            console.print(Panel(Markdown("Assistant proposed an action plan.\n\n" + "```json\n" + json.dumps({"plan": plan, "finalize": finalize}, indent=2, ensure_ascii=False) + "\n```"), title=f"Action Plan · step {step}", border_style="yellow"))
-            if not execute_actions:
-                console.print("[yellow]Execution disabled (use --execute-actions to run). The conversation will proceed without execution.[/yellow]")
-        elif evt.get("type") == "parse_warning":
-            console.print(Panel(Markdown("Assistant output looked like JSON but could not be parsed. Details:\n\n" + "```\n" + "\n".join([str(x) for x in evt.get("details", [])]) + "\n```\nRaw preview:\n\n" + "```\n" + (evt.get("raw_preview") or "") + "\n```"), title="Parse Warning", border_style="yellow"))
-        elif evt.get("type") == "action_warning":
-            console.print(Panel(Markdown("Assistant output looks like an action plan but is not valid JSON. Details:\n\n" +
-                                     "```\n" + "\n".join([str(x) for x in evt.get("details", [])]) + "\n```\nRaw preview:\n\n" +
-                                     "```\n" + (evt.get("raw_preview") or "") + "\n```\n" +
-                                     "Scientist: please decide — either instruct the Assistant to resend STRICT JSON action_plan (no fences), "
-                                     "or proceed conversationally without execution."),
-                                     title="Action Plan Warning", border_style="yellow"))
-        elif evt.get("type") == "execution":
-            run_root = evt.get("run_root")
-            log = evt.get("log", [])
-            console.print(Panel(Markdown(f"Executed plan in `{run_root}`. Summary of steps: \n\n" + "```json\n" + json.dumps(log, indent=2, ensure_ascii=False) + "\n```"), title="Execution Results", border_style="green"))
-        elif evt.get("type") == "final":
-            payload_json = json.dumps(evt["payload"], ensure_ascii=False)
 
-    console.rule("[bold green]Run complete[/bold green]")
-    if payload_json:
-        console.print_json(payload_json)
+def main():
+    parser = argparse.ArgumentParser(description="PI↔Student loop over a YAML task (3 iterations)")
+    parser.add_argument(
+        "--task",
+        default="configs/training2017_task_en.yaml",
+        help="Path to YAML task file (default: configs/training2017_task_en.yaml)"
+    )
+    parser.add_argument("--rounds", type=int, default=200, help="Maximum PI→Student iterations (default: 200)")
+    parser.add_argument("--resume", type=str, default=None, help="Resume from a run folder or checkpoint.json path")
+    args = parser.parse_args()
+
+    client = OpenAI()
+    console = Console()
+
+    # Set up run folder (new or resume)
+    run_paths = None
+    start_turn = 1
+    pi_prev_id: Optional[str] = None
+    student_prev_id: Optional[str] = None
+    last_student: Optional[str] = None
+    task_path = args.task
+    if args.resume:
+        # Load checkpoint
+        try:
+            ck = load_checkpoint(Path(args.resume))
+        except Exception as e:
+            print(f"[error] failed to load checkpoint: {e}")
+            return
+        run_root = Path(ck.get("run_root") or Path(args.resume)).resolve()
+        run_paths = {
+            "root": run_root,
+            "code": run_root / "code",
+            "data": run_root / "data",
+            "outputs": run_root / "outputs",
+            "logs": run_root / "logs",
+        }
+        start_turn = int(ck.get("turn", 1)) + 1
+        pi_prev_id = ck.get("pi_prev_id")
+        student_prev_id = ck.get("student_prev_id")
+        last_student = ck.get("last_student")
+        task_path = ck.get("task_path") or args.task
+        transcript_path = run_paths["logs"] / "transcript.jsonl"
+        append_jsonl(transcript_path, {"type": "resume", "from": str(Path(args.resume)), "run_root": str(run_root), "start_turn": start_turn})
+        orch = Orchestrator(run_root)
+        # Ensure task text is available on resume
+        try:
+            with open(task_path, "r", encoding="utf-8") as f:
+                task_text = f.read()
+        except Exception as e:
+            print(f"[error] failed to read task file on resume: {e}")
+            return
+    else:
+        # New run
+        try:
+            with open(task_path, "r", encoding="utf-8") as f:
+                task_text = f.read()
+        except Exception as e:
+            print(f"[error] failed to read task file: {e}")
+            return
+        run_paths = make_run_folder("runs", name_hint="chat")
+        try:
+            _ = copy_data_to_run("data", run_paths["data"])  # copy dataset into run/data
+        except Exception:
+            pass
+        transcript_path = run_paths["logs"] / "transcript.jsonl"
+        append_jsonl(transcript_path, {"type": "run_root", "path": str(run_paths['root'])})
+        orch = Orchestrator(run_paths["root"])  # execute relative to run folder
+
+    # Prepare loop config
+    rounds = max(1, args.rounds)
+    pi_model = os.getenv("PI_MODEL", "gpt-4.1-mini")
+    student_model = os.getenv("STUDENT_MODEL", "gpt-4.1-mini")
+    # Initialize state if not resuming
+    if not args.resume:
+        last_student = None
+        pi_prev_id = None
+        student_prev_id = None
+
+    # Hand off to conversation loop
+    run_conversation_loop(
+        client=client,
+        console=console,
+        orch=orch,
+        run_paths=run_paths,
+        transcript_path=transcript_path,
+        task_text=task_text,
+        task_path=task_path,
+        start_turn=start_turn,
+        rounds=rounds,
+        pi_model=pi_model,
+        student_model=student_model,
+        pi_prev_id=pi_prev_id,
+        student_prev_id=student_prev_id,
+        last_student=last_student,
+    )
+
 
 if __name__ == "__main__":
-    app()
+    main()

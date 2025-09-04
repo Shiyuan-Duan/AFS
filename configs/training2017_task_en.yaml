@@ -2,7 +2,7 @@ task:
   title: "In-depth analysis of /Users/shiyuanduan/Documents/ai-for-science-agents/data/training2017 and construction of an interpretable, deterministic rule-chain classifier (iterate to ≥90% accuracy)"
   goal: |
     Given the local dataset at /Users/shiyuanduan/Documents/ai-for-science-agents/data/training2017, conduct thorough exploratory data analysis (EDA),
-    then design and implement an interpretable, deterministic rule-chain (decision-list) classifier.
+    then design and implement an interpretable, deterministic rule-chain (decision-list) classifier. Finally explain the model and see if it is reasonable.
 
     Rule examples (non-exhaustive):
       • If feature_A > threshold1 AND feature_B changes by a certain amount within T seconds after event E, classify as class X.

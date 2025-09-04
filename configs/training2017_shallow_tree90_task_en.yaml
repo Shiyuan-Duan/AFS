@@ -1,0 +1,50 @@
+task:
+  title: "Feature engineering for shallow trees: can meaningful, explainable features reach ≥90% accuracy on training2017 (max_depth 3–5)?"
+  goal: |
+    Focus on feature engineering. The objective is to design a set of meaningful, explainable features that enables a shallow
+    DecisionTreeClassifier (max_depth in [3, 5]) to achieve ≥90% validation accuracy on the PhysioNet AF 2017 dataset. The feature set
+    is not limited to classical features — you may invent new features — but every feature must be interpretable and its rationale clearly
+    described (what it measures, how it is computed, and why it may discriminate classes). The model is only a measurement tool to test
+    the features; the emphasis is on feature quality, not tree complexity.
+
+    Suggested workflow (iterate with tight feedback):
+      - EDA: dataset shape, fs, label balance, noise patterns; inspect representative signals.
+      - Feature engineering (breadth → focus), e.g.:
+          • Time domain: rate/variability surrogates, peak/interval statistics, amplitude/skew/kurtosis, stationarity windows.
+          • Frequency: band‑powers (e.g., 0–5/5–15/15–40 Hz), spectral entropy, dominant frequency/bandwidth, harmonic ratios.
+          • Morphology: peak shapes/widths, slope distributions, beat regularity indices, template correlation features.
+          • Signal quality: noise indices, clipping/flatness ratio, artifact detectors.
+          • Invented features: any meaningful, explainable transform supported by a short rationale and formula/algorithm.
+      - Modeling: scikit‑learn DecisionTreeClassifier with max_depth 3–5 (min_samples_leaf tuned but reasonable). The tree serves to
+        evaluate feature discriminability and to yield interpretable thresholds.
+      - Evaluation: Stratified 5‑fold CV (random_state=42). Primary metric: accuracy; also precision/recall/F1 + confusion matrix.
+      - Error analysis → refine features/preprocessing while keeping the tree shallow; aim to reach ≥90% accuracy.
+      - Interpretability: document each feature (name, units, computation, intuition) and list the final tree splits with thresholds and meaning.
+
+  inputs:
+    dataset_root: "/Users/shiyuanduan/Documents/ai-for-science-agents/data/training2017"
+    description: |
+      Dataset: PhysioNet/CinC Challenge 2017 (single‑lead ECG, ~30s per record). Files under dataset_root:
+        - REFERENCE.csv: mapping record ID -> label {N, A, O, ~}.
+        - AXXXXX.mat: MATLAB v4 file with ECG array.
+        - AXXXXX.hea: WFDB header with sampling frequency (≈300 Hz) and length.
+      Notes:
+        - Prefer scipy.io.loadmat or wfdb to read signals; rely on .hea for fs/length when needed.
+        - Keep all reads/writes confined to the run folder created by the orchestrator.
+
+  deliverables:
+    - "Report (Markdown + HTML): EDA; feature catalog with rationale (name, formula/algorithm, units, intuition); shallow tree config; CV results; confusion matrix; error analysis; and iteration log."
+    - "Reproducible code under code/: loaders, feature extraction, model training/evaluation, and a simple classify API/CLI."
+    - "Artifacts under outputs/: features_summary.csv (definitions + basic stats), cv_metrics.csv (per‑fold + mean±std), confusion_matrix.png, misclassified.csv, model.json (exported tree), and rules.md (interpreting the tree splits and feature meanings)."
+
+  constraints:
+    - "Model: DecisionTreeClassifier with max_depth in [3, 5]. Keep the tree shallow; do not exceed depth=5."
+    - "Determinism: fix random_state=42 for all stochastic steps; ensure reproducibility."
+    - "Evaluation: use stratified 5‑fold CV. Primary metric: accuracy; also report precision/recall/F1 per class."
+    - "Target: validation accuracy ≥ 90%; if unmet, iterate on features/preprocessing while preserving depth ≤5."
+    - "Interpretability: every feature must be meaningful and explainable (document rationale); explain each split (feature, threshold, units) and provide example decision paths."
+    - "Local‑only execution; all reads/writes confined to the orchestrator’s run folder (code/, data/, outputs/, logs/)."
+    - "STRICT: No label leakage. The label from REFERENCE.csv (or any derivative) must never be included in the feature matrix. Do not engineer features that directly or indirectly encode the label (e.g., using label strings, one‑hot of labels, or leaking label via joins)."
+    - "STRICT: Fold hygiene. In CV, compute any statistics (scalers, thresholds, feature selection, imputation parameters) using training fold only; apply to validation fold. Do not peek across folds."
+    - "ID handling. If a record ID is used, it must not encode label information; avoid using IDs as numeric/categorical predictors unless justified and verified not to leak labels."
+    - "Preprocessing discipline. Any denoising/normalization learned from data must be fitted on training fold only and applied to validation fold."

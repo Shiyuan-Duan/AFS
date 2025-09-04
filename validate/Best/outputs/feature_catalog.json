@@ -1,0 +1,180 @@
+{
+  "eda": {
+    "num_records": 5788,
+    "class_counts": {
+      "N": 5050,
+      "A": 738
+    },
+    "classes": [
+      "A",
+      "N"
+    ]
+  },
+  "feature_catalog": [
+    {
+      "name": "len_sec",
+      "type": "time",
+      "desc": "Signal duration in seconds (len/sfreq)",
+      "justification": "Captures recording length variability which may affect rhythm segments."
+    },
+    {
+      "name": "mean",
+      "type": "time",
+      "desc": "Mean amplitude",
+      "justification": "Baseline offset; robust to AF vs normal not directly but provides context."
+    },
+    {
+      "name": "std",
+      "type": "time",
+      "desc": "Std dev of amplitude",
+      "justification": "Overall variability; AF may increase variability."
+    },
+    {
+      "name": "iqr",
+      "type": "time",
+      "desc": "Interquartile range",
+      "justification": "Robust spread measure less sensitive to noise/outliers."
+    },
+    {
+      "name": "zcr",
+      "type": "time",
+      "desc": "Zero-crossing rate per second",
+      "justification": "Proxy for dominant frequency and noise level; AF may alter periodicity."
+    },
+    {
+      "name": "rms",
+      "type": "time",
+      "desc": "Root mean square amplitude",
+      "justification": "Energy of signal."
+    },
+    {
+      "name": "skew",
+      "type": "time",
+      "desc": "Skewness (Fisher)",
+      "justification": "Waveform asymmetry."
+    },
+    {
+      "name": "kurt",
+      "type": "time",
+      "desc": "Kurtosis (excess)",
+      "justification": "Peakedness; QRS sharpness proxy."
+    },
+    {
+      "name": "psd_peak_freq",
+      "type": "freq",
+      "desc": "Peak frequency of Welch PSD",
+      "justification": "Dominant rhythm frequency; AF reduces regular peaks."
+    },
+    {
+      "name": "psd_bandpower_0_5",
+      "type": "freq",
+      "desc": "Bandpower 0-5 Hz",
+      "justification": "Most ECG energy in low frequencies; AF may redistribute power."
+    },
+    {
+      "name": "psd_bandpower_5_15",
+      "type": "freq",
+      "desc": "Bandpower 5-15 Hz",
+      "justification": "Captures QRS-related energy."
+    },
+    {
+      "name": "spectral_entropy",
+      "type": "freq",
+      "desc": "Shannon entropy of normalized PSD",
+      "justification": "Rhythm complexity higher in AF."
+    },
+    {
+      "name": "acf1",
+      "type": "morph",
+      "desc": "Autocorr at 1 lag of envelope peak-peak series",
+      "justification": "Periodicity proxy; AF lowers autocorr."
+    },
+    {
+      "name": "rr_mad",
+      "type": "morph",
+      "desc": "Median absolute deviation of pseudo-RR intervals",
+      "justification": "Irregularity in AF leads to higher RR variability."
+    },
+    {
+      "name": "r_peak_rate",
+      "type": "morph",
+      "desc": "Estimated beats per minute from peaks",
+      "justification": "Heart rate estimate."
+    },
+    {
+      "name": "pw_ratio",
+      "type": "invented",
+      "desc": "Power ratio (0-5 Hz)/(5-15 Hz)",
+      "justification": "Relative baseline vs QRS energy; interpretable."
+    },
+    {
+      "name": "irreg_index",
+      "type": "invented",
+      "desc": "RR irregularity index = rr_mad / median_rr",
+      "justification": "Scale-invariant irregularity; higher in AF."
+    },
+    {
+      "name": "sdnn",
+      "type": "morph",
+      "desc": "Standard deviation of NN (RR) intervals",
+      "justification": "Global heart-rate variability; AF increases RR dispersion."
+    },
+    {
+      "name": "rmssd",
+      "type": "morph",
+      "desc": "Root mean square of successive RR differences",
+      "justification": "Short-term variability elevated in AF due to beat-to-beat irregularity."
+    },
+    {
+      "name": "pnn50",
+      "type": "morph",
+      "desc": "Proportion of successive RR differences > 50 ms",
+      "justification": "Interpretable threshold-based irregularity indicator; typically higher in AF."
+    }
+  ],
+  "feature_names": [
+    "acf1",
+    "iqr",
+    "irreg_index",
+    "kurt",
+    "len_sec",
+    "mean",
+    "pnn50",
+    "psd_bandpower_0_5",
+    "psd_bandpower_5_15",
+    "psd_peak_freq",
+    "pw_ratio",
+    "r_peak_rate",
+    "rms",
+    "rmssd",
+    "rr_mad",
+    "sdnn",
+    "skew",
+    "spectral_entropy",
+    "std",
+    "zcr"
+  ],
+  "rules_per_fold": [
+    {
+      "fold": 0,
+      "tree_rules": "|--- pnn50 <= 0.45\n|   |--- r_peak_rate <= 103.30\n|   |   |--- r_peak_rate <= 50.35\n|   |   |   |--- class: 1\n|   |   |--- r_peak_rate >  50.35\n|   |   |   |--- pnn50 <= 0.38\n|   |   |   |   |--- irreg_index <= 0.01\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- irreg_index >  0.01\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- pnn50 >  0.38\n|   |   |   |   |--- rr_mad <= 0.02\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- rr_mad >  0.02\n|   |   |   |   |   |--- class: 0\n|   |--- r_peak_rate >  103.30\n|   |   |--- zcr <= 10.73\n|   |   |   |--- r_peak_rate <= 130.21\n|   |   |   |   |--- class: 1\n|   |   |   |--- r_peak_rate >  130.21\n|   |   |   |   |--- class: 1\n|   |   |--- zcr >  10.73\n|   |   |   |--- class: 1\n|--- pnn50 >  0.45\n|   |--- irreg_index <= 0.32\n|   |   |--- acf1 <= 0.32\n|   |   |   |--- irreg_index <= 0.07\n|   |   |   |   |--- r_peak_rate <= 75.79\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- r_peak_rate >  75.79\n|   |   |   |   |   |--- class: 1\n|   |   |   |--- irreg_index >  0.07\n|   |   |   |   |--- sdnn <= 0.20\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- sdnn >  0.20\n|   |   |   |   |   |--- class: 1\n|   |   |--- acf1 >  0.32\n|   |   |   |--- pnn50 <= 0.74\n|   |   |   |   |--- r_peak_rate <= 96.00\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- r_peak_rate >  96.00\n|   |   |   |   |   |--- class: 1\n|   |   |   |--- pnn50 >  0.74\n|   |   |   |   |--- iqr <= 179.39\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- iqr >  179.39\n|   |   |   |   |   |--- class: 0\n|   |--- irreg_index >  0.32\n|   |   |--- iqr <= 154.30\n|   |   |   |--- acf1 <= -0.24\n|   |   |   |   |--- zcr <= 5.06\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- zcr >  5.06\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- acf1 >  -0.24\n|   |   |   |   |--- pw_ratio <= 1.41\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- pw_ratio >  1.41\n|   |   |   |   |   |--- class: 1\n|   |   |--- iqr >  154.30\n|   |   |   |--- zcr <= 8.10\n|   |   |   |   |--- class: 0\n|   |   |   |--- zcr >  8.10\n|   |   |   |   |--- class: 0\n"
+    },
+    {
+      "fold": 1,
+      "tree_rules": "|--- pnn50 <= 0.46\n|   |--- r_peak_rate <= 103.30\n|   |   |--- r_peak_rate <= 50.67\n|   |   |   |--- class: 1\n|   |   |--- r_peak_rate >  50.67\n|   |   |   |--- irreg_index <= 0.01\n|   |   |   |   |--- rmssd <= 0.10\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- rmssd >  0.10\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- irreg_index >  0.01\n|   |   |   |   |--- irreg_index <= 0.11\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- irreg_index >  0.11\n|   |   |   |   |   |--- class: 0\n|   |--- r_peak_rate >  103.30\n|   |   |--- rmssd <= 0.07\n|   |   |   |--- class: 1\n|   |   |--- rmssd >  0.07\n|   |   |   |--- sdnn <= 0.07\n|   |   |   |   |--- class: 1\n|   |   |   |--- sdnn >  0.07\n|   |   |   |   |--- class: 1\n|--- pnn50 >  0.46\n|   |--- irreg_index <= 0.32\n|   |   |--- acf1 <= 0.35\n|   |   |   |--- irreg_index <= 0.07\n|   |   |   |   |--- r_peak_rate <= 77.25\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- r_peak_rate >  77.25\n|   |   |   |   |   |--- class: 1\n|   |   |   |--- irreg_index >  0.07\n|   |   |   |   |--- pw_ratio <= 8.11\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- pw_ratio >  8.11\n|   |   |   |   |   |--- class: 1\n|   |   |--- acf1 >  0.35\n|   |   |   |--- pnn50 <= 0.70\n|   |   |   |   |--- psd_peak_freq <= 1.90\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- psd_peak_freq >  1.90\n|   |   |   |   |   |--- class: 1\n|   |   |   |--- pnn50 >  0.70\n|   |   |   |   |--- iqr <= 169.41\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- iqr >  169.41\n|   |   |   |   |   |--- class: 0\n|   |--- irreg_index >  0.32\n|   |   |--- sdnn <= 0.32\n|   |   |   |--- spectral_entropy <= 0.65\n|   |   |   |   |--- class: 0\n|   |   |   |--- spectral_entropy >  0.65\n|   |   |   |   |--- rr_mad <= 0.25\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- rr_mad >  0.25\n|   |   |   |   |   |--- class: 0\n|   |   |--- sdnn >  0.32\n|   |   |   |--- rms <= 107.66\n|   |   |   |   |--- class: 0\n|   |   |   |--- rms >  107.66\n|   |   |   |   |--- psd_bandpower_0_5 <= 35999.89\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- psd_bandpower_0_5 >  35999.89\n|   |   |   |   |   |--- class: 0\n"
+    },
+    {
+      "fold": 2,
+      "tree_rules": "|--- pnn50 <= 0.47\n|   |--- r_peak_rate <= 109.72\n|   |   |--- r_peak_rate <= 50.46\n|   |   |   |--- class: 1\n|   |   |--- r_peak_rate >  50.46\n|   |   |   |--- pnn50 <= 0.36\n|   |   |   |   |--- irreg_index <= 0.01\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- irreg_index >  0.01\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- pnn50 >  0.36\n|   |   |   |   |--- irreg_index <= 0.01\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- irreg_index >  0.01\n|   |   |   |   |   |--- class: 0\n|   |--- r_peak_rate >  109.72\n|   |   |--- irreg_index <= 0.03\n|   |   |   |--- class: 1\n|   |   |--- irreg_index >  0.03\n|   |   |   |--- class: 1\n|--- pnn50 >  0.47\n|   |--- irreg_index <= 0.32\n|   |   |--- acf1 <= 0.35\n|   |   |   |--- r_peak_rate <= 77.84\n|   |   |   |   |--- pnn50 <= 0.72\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- pnn50 >  0.72\n|   |   |   |   |   |--- class: 1\n|   |   |   |--- r_peak_rate >  77.84\n|   |   |   |   |--- pw_ratio <= 14.13\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- pw_ratio >  14.13\n|   |   |   |   |   |--- class: 0\n|   |   |--- acf1 >  0.35\n|   |   |   |--- pnn50 <= 0.71\n|   |   |   |   |--- rms <= 109.19\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- rms >  109.19\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- pnn50 >  0.71\n|   |   |   |   |--- psd_bandpower_0_5 <= 26512.44\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- psd_bandpower_0_5 >  26512.44\n|   |   |   |   |   |--- class: 0\n|   |--- irreg_index >  0.32\n|   |   |--- iqr <= 151.32\n|   |   |   |--- pnn50 <= 0.98\n|   |   |   |   |--- spectral_entropy <= 0.64\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- spectral_entropy >  0.64\n|   |   |   |   |   |--- class: 1\n|   |   |   |--- pnn50 >  0.98\n|   |   |   |   |--- class: 0\n|   |   |--- iqr >  151.32\n|   |   |   |--- zcr <= 8.37\n|   |   |   |   |--- class: 0\n|   |   |   |--- zcr >  8.37\n|   |   |   |   |--- class: 0\n"
+    },
+    {
+      "fold": 3,
+      "tree_rules": "|--- pnn50 <= 0.46\n|   |--- r_peak_rate <= 103.01\n|   |   |--- pnn50 <= 0.36\n|   |   |   |--- irreg_index <= 0.01\n|   |   |   |   |--- pnn50 <= 0.13\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- pnn50 >  0.13\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- irreg_index >  0.01\n|   |   |   |   |--- sdnn <= 0.25\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- sdnn >  0.25\n|   |   |   |   |   |--- class: 0\n|   |   |--- pnn50 >  0.36\n|   |   |   |--- irreg_index <= 0.02\n|   |   |   |   |--- sdnn <= 0.19\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- sdnn >  0.19\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- irreg_index >  0.02\n|   |   |   |   |--- sdnn <= 0.11\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- sdnn >  0.11\n|   |   |   |   |   |--- class: 0\n|   |--- r_peak_rate >  103.01\n|   |   |--- zcr <= 10.41\n|   |   |   |--- std <= 201.54\n|   |   |   |   |--- class: 1\n|   |   |   |--- std >  201.54\n|   |   |   |   |--- class: 1\n|   |   |--- zcr >  10.41\n|   |   |   |--- class: 1\n|--- pnn50 >  0.46\n|   |--- irreg_index <= 0.32\n|   |   |--- acf1 <= 0.34\n|   |   |   |--- r_peak_rate <= 75.24\n|   |   |   |   |--- pnn50 <= 0.71\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- pnn50 >  0.71\n|   |   |   |   |   |--- class: 1\n|   |   |   |--- r_peak_rate >  75.24\n|   |   |   |   |--- pw_ratio <= 21.11\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- pw_ratio >  21.11\n|   |   |   |   |   |--- class: 0\n|   |   |--- acf1 >  0.34\n|   |   |   |--- spectral_entropy <= 0.58\n|   |   |   |   |--- len_sec <= 13.91\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- len_sec >  13.91\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- spectral_entropy >  0.58\n|   |   |   |   |--- pnn50 <= 0.71\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- pnn50 >  0.71\n|   |   |   |   |   |--- class: 1\n|   |--- irreg_index >  0.32\n|   |   |--- sdnn <= 0.31\n|   |   |   |--- spectral_entropy <= 0.64\n|   |   |   |   |--- zcr <= 7.55\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- zcr >  7.55\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- spectral_entropy >  0.64\n|   |   |   |   |--- sdnn <= 0.22\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- sdnn >  0.22\n|   |   |   |   |   |--- class: 1\n|   |   |--- sdnn >  0.31\n|   |   |   |--- psd_bandpower_0_5 <= 34908.65\n|   |   |   |   |--- psd_bandpower_0_5 <= 14092.30\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- psd_bandpower_0_5 >  14092.30\n|   |   |   |   |   |--- class: 1\n|   |   |   |--- psd_bandpower_0_5 >  34908.65\n|   |   |   |   |--- class: 0\n"
+    },
+    {
+      "fold": 4,
+      "tree_rules": "|--- pnn50 <= 0.48\n|   |--- r_peak_rate <= 103.30\n|   |   |--- r_peak_rate <= 50.24\n|   |   |   |--- class: 1\n|   |   |--- r_peak_rate >  50.24\n|   |   |   |--- pnn50 <= 0.38\n|   |   |   |   |--- irreg_index <= 0.01\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- irreg_index >  0.01\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- pnn50 >  0.38\n|   |   |   |   |--- irreg_index <= 0.02\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- irreg_index >  0.02\n|   |   |   |   |   |--- class: 0\n|   |--- r_peak_rate >  103.30\n|   |   |--- rmssd <= 0.07\n|   |   |   |--- class: 1\n|   |   |--- rmssd >  0.07\n|   |   |   |--- iqr <= 143.53\n|   |   |   |   |--- class: 1\n|   |   |   |--- iqr >  143.53\n|   |   |   |   |--- class: 1\n|--- pnn50 >  0.48\n|   |--- irreg_index <= 0.32\n|   |   |--- acf1 <= 0.35\n|   |   |   |--- r_peak_rate <= 80.45\n|   |   |   |   |--- iqr <= 124.88\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- iqr >  124.88\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- r_peak_rate >  80.45\n|   |   |   |   |--- pw_ratio <= 5.82\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- pw_ratio >  5.82\n|   |   |   |   |   |--- class: 1\n|   |   |--- acf1 >  0.35\n|   |   |   |--- pnn50 <= 0.73\n|   |   |   |   |--- psd_peak_freq <= 1.90\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- psd_peak_freq >  1.90\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- pnn50 >  0.73\n|   |   |   |   |--- iqr <= 169.41\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- iqr >  169.41\n|   |   |   |   |   |--- class: 0\n|   |--- irreg_index >  0.32\n|   |   |--- iqr <= 154.51\n|   |   |   |--- acf1 <= -0.21\n|   |   |   |   |--- iqr <= 96.35\n|   |   |   |   |   |--- class: 1\n|   |   |   |   |--- iqr >  96.35\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- acf1 >  -0.21\n|   |   |   |   |--- pnn50 <= 0.81\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- pnn50 >  0.81\n|   |   |   |   |   |--- class: 1\n|   |   |--- iqr >  154.51\n|   |   |   |--- zcr <= 8.10\n|   |   |   |   |--- zcr <= 4.04\n|   |   |   |   |   |--- class: 0\n|   |   |   |   |--- zcr >  4.04\n|   |   |   |   |   |--- class: 0\n|   |   |   |--- zcr >  8.10\n|   |   |   |   |--- class: 0\n"
+    }
+  ],
+  "notes": "Finalized RR-variability features (SDNN, RMSSD, pNN50) computed fold-specifically with training-only calibration; deterministic StratifiedKFold(random_state=42). Depth<=5 tree; no label leakage. rules.md summarizes thresholds and rationale."
+}

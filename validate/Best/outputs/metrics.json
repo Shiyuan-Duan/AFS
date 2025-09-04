@@ -1,0 +1,16 @@
+{
+  "cv_accuracy_mean": 0.9101571421534163,
+  "cv_accuracy_std": 0.011999497566698197,
+  "cv_f1_mean": 0.7107289466386983,
+  "fold_accuracies": [
+    0.9067357512953368,
+    0.9110535405872193,
+    0.9231433506044905,
+    0.9204840103716508,
+    0.8893690579083837
+  ],
+  "model": "DecisionTreeClassifier",
+  "max_depth": 4,
+  "random_state": 42,
+  "class_weight": "balanced"
+}
